@@ -4,33 +4,56 @@ require_once dirname(__DIR__).'/vendor/autoload_runtime.php';
 
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\Matcher\UrlMatcher;
+use Symfony\Component\Routing\RequestContext;
+use Symfony\Component\Routing\Route;
+use Symfony\Component\Routing\RouteCollection;
+use Symfony\Component\Routing\Exception\ResourceNotFoundException;
 
 return function () {
     $request = Request::createFromGlobals();
 
-    // the URI being requested (e.g. /about) minus any query parameters
-    $request->getPathInfo();
+    // Define routes
+    $routes = new RouteCollection();
 
-    // retrieves $_GET and $_POST variables respectively
-    $request->query->get('id');
-    $request->getPayload()->get('category', 'default category');
+    $routes->add(
+        'home', 
+        new Route(
+            '/', 
+            [
+                '_controller' => function () {
+                    return new Response('Welcome home!');
+                }
+            ]
+        )
+    );
 
-    // retrieves $_SERVER variables
-    $request->server->get('HTTP_HOST');
+    $routes->add(
+        'hello', 
+        new Route(
+            '/hello/{name}', 
+            [
+                '_controller' => function (string $name) {
+                    return new Response("Hello, $name!");
+                }
+            ]
+        )
+    );
 
-    // retrieves an instance of UploadedFile identified by "attachment"
-    $request->files->get('attachment');
+    // Match the request
+    $context = new RequestContext();
+    $context->fromRequest($request);
+    $matcher = new UrlMatcher($routes, $context);
 
-    // retrieves a $_COOKIE value
-    $request->cookies->get('PHPSESSID');
+    try {
+        $parameters = $matcher->match($request->getPathInfo());
+        $controller = $parameters['_controller'];
+        unset($parameters['_controller'], $parameters['_route']);
+        $response = $controller(...array_values($parameters));
+        
+    } catch (ResourceNotFoundException $e) {
+        $response = new Response('Not Found', 404);
+    }
 
-    // retrieves an HTTP request header, with normalized, lowercase keys
-    $request->headers->get('host');
-    $request->headers->get('content-type');
-
-    $request->getMethod();    // e.g. GET, POST, PUT, DELETE or HEAD
-    $request->getLanguages(); // an array of languages the client accepts
-
-    $response = new Response(json_encode($request->query->all()), 200, ['Content-Type' => 'application/json']);
     $response->send();
 };
