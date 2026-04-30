@@ -7,6 +7,7 @@ use Dominic\ExperimentSymfonyComponent\Controller\HomeController;
 use Dominic\ExperimentSymfonyComponent\Controller\SamlController;
 use Dominic\ExperimentSymfonyComponent\Routing\AttributeRouteLoader;
 use Dominic\ExperimentSymfonyComponent\Security\AuthenticatorManagerFactory;
+use Dominic\ExperimentSymfonyComponent\Security\EventListener\IsAuthenticatedListener;
 use Dominic\ExperimentSymfonyComponent\Security\FirewallFactory;
 use Dominic\ExperimentSymfonyComponent\Security\TokenStorageValueResolver;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -64,6 +65,9 @@ return function () {
     // Register the RouterListener (resolves routes on kernel.request)
     $routerListener = new RouterListener($matcher, $requestStack, $context);
     $dispatcher->addSubscriber($routerListener);
+
+    // IsAuthenticated attribute listener — redirects to login if not authenticated
+    $dispatcher->addSubscriber(new IsAuthenticatedListener($tokenStorage));
 
     // --- HttpKernel ---
     $controllerResolver = new ControllerResolver();

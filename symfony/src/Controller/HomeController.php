@@ -2,6 +2,7 @@
 
 namespace Dominic\ExperimentSymfonyComponent\Controller;
 
+use Dominic\ExperimentSymfonyComponent\Security\Attribute\IsAuthenticated;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -22,15 +23,10 @@ class HomeController
     }
 
     #[Route('/dashboard', name: 'dashboard')]
+    #[IsAuthenticated]
     public function dashboard(TokenStorageInterface $tokenStorage): Response
     {
-        $token = $tokenStorage->getToken();
-
-        if (null === $token || !$token->getUser()) {
-            return new JsonResponse(['error' => 'Authentication required'], 401);
-        }
-
-        $user = $token->getUser();
+        $user = $tokenStorage->getToken()->getUser();
 
         return new JsonResponse([
             'message' => 'Welcome to the dashboard!',
