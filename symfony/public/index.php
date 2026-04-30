@@ -2,8 +2,10 @@
 
 require_once dirname(__DIR__).'/vendor/autoload_runtime.php';
 
+use Dominic\ExperimentSymfonyComponent\Controller\ControllerResolver;
 use Dominic\ExperimentSymfonyComponent\Controller\HomeController;
 use Dominic\ExperimentSymfonyComponent\Controller\SamlController;
+use Dominic\ExperimentSymfonyComponent\Routing\AttributeRouteLoader;
 use Dominic\ExperimentSymfonyComponent\Security\ApiKeyAuthenticator;
 use Dominic\ExperimentSymfonyComponent\Security\InMemoryUserProvider;
 use Dominic\ExperimentSymfonyComponent\Security\SamlAuthenticator;
@@ -18,12 +20,10 @@ use Symfony\Component\HttpKernel\Controller\ArgumentResolver\DefaultValueResolve
 use Symfony\Component\HttpKernel\Controller\ArgumentResolver\RequestAttributeValueResolver;
 use Symfony\Component\HttpKernel\Controller\ArgumentResolver\RequestValueResolver;
 use Symfony\Component\HttpKernel\Controller\ArgumentResolver\VariadicValueResolver;
-use Symfony\Component\HttpKernel\Controller\ControllerResolver;
 use Symfony\Component\HttpKernel\EventListener\RouterListener;
 use Symfony\Component\HttpKernel\HttpKernel;
 use Symfony\Component\Routing\Matcher\UrlMatcher;
 use Symfony\Component\Routing\RequestContext;
-use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouteCollection;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorage;
 use Symfony\Component\Security\Http\Authentication\AuthenticatorManager;
@@ -38,72 +38,12 @@ return function () {
 
     // --- SAML Settings ---
     $samlSettings = require dirname(__DIR__).'/config/saml_settings.php';
-    $samlController = new SamlController($samlSettings);
 
-    // --- Routing ---
+    // --- Routing (loaded from #[Route] attributes) ---
+    $routeLoader = new AttributeRouteLoader();
     $routes = new RouteCollection();
-
-    $routes->add(
-        'home', 
-        new Route(
-            '/', 
-            [ '_controller' => HomeController::class.'::index' ]
-        )
-    );
-
-    $routes->add(
-        'hello', 
-        new Route(
-            '/hello/{name}', 
-            [ '_controller' => HomeController::class.'::hello' ]
-        )
-    );
-
-    $routes->add(
-        'dashboard', 
-        new Route(
-            '/dashboard', 
-            [ '_controller' => HomeController::class.'::dashboard' ]
-        )
-    );
-
-    // SAML routes (use closures to inject samlController)
-    $routes->add(
-        'saml_metadata', 
-        new Route(
-            '/saml/metadata', 
-            [ '_controller' => fn () => $samlController->metadata() ]
-        )
-    );
-
-    $routes->add(
-        'saml_login', 
-        new Route(
-            '/saml/login', 
-            [ '_controller' => fn () => $samlController->login() ]
-        )
-    );
-
-    $routes->add(
-        'saml_acs', 
-        new Route(
-            '/saml/acs', 
-            [ '_controller' => fn () => $samlController->acs() ],
-            [],
-            [],
-            '',
-            [],
-            ['POST']
-        )
-    );
-
-    $routes->add(
-        'saml_sls', 
-        new Route(
-            '/saml/sls', 
-            [ '_controller' => fn () => $samlController->sls() ]
-        )
-    );
+    $routes->addCollection($routeLoader->load(HomeController::class));
+    $routes->addCollection($routeLoader->load(SamlController::class));
 
     $context = new RequestContext();
     $matcher = new UrlMatcher($routes, $context);
@@ -117,7 +57,7 @@ return function () {
     $userProvider->addUser(new User('user', ['ROLE_USER']));
 
     // API Key authenticator: key => user identifier
-    $authenticator = new ApiKeyAuthenticator([
+    $apiKeyAuthenticator = new ApiKeyAuthenticator([
         'secret-admin-key' => 'admin',
         'secret-user-key' => 'user',
     ]);
@@ -135,7 +75,7 @@ return function () {
 
     // AuthenticatorManager handles the authentication flow
     $authenticatorManager = new AuthenticatorManager(
-        [$authenticator, $samlAuthenticator],
+        [$apiKeyAuthenticator, $samlAuthenticator],
         $tokenStorage,
         $dispatcher,
         'main',
@@ -170,6 +110,7 @@ return function () {
 
     // --- HttpKernel ---
     $controllerResolver = new ControllerResolver();
+    $controllerResolver->registerController(SamlController::class, new SamlController($samlSettings));
 
     $argumentResolver = new ArgumentResolver(null, [
         new TokenStorageValueResolver($tokenStorage),

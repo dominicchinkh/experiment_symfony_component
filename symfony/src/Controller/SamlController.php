@@ -4,6 +4,7 @@ namespace Dominic\ExperimentSymfonyComponent\Controller;
 
 use OneLogin\Saml2\Auth as SamlAuth;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\Attribute\Route;
 
 class SamlController
 {
@@ -14,9 +15,7 @@ class SamlController
         $this->samlAuth = new SamlAuth($samlSettings);
     }
 
-    /**
-     * SP Metadata endpoint — provide this URL to your IdP.
-     */
+    #[Route('/saml/metadata', name: 'saml_metadata')]
     public function metadata(): Response
     {
         $settings = $this->samlAuth->getSettings();
@@ -35,9 +34,7 @@ class SamlController
         ]);
     }
 
-    /**
-     * Initiate SAML login — redirects the user to the IdP.
-     */
+    #[Route('/saml/login', name: 'saml_login')]
     public function login(): Response
     {
         $ssoUrl = $this->samlAuth->login(null, [], false, false, true);
@@ -45,18 +42,13 @@ class SamlController
         return new Response('', 302, ['Location' => $ssoUrl]);
     }
 
-    /**
-     * ACS (Assertion Consumer Service) — handled by SamlAuthenticator.
-     * This action is a fallback if the authenticator doesn't intercept.
-     */
+    #[Route('/saml/acs', name: 'saml_acs', methods: ['POST'])]
     public function acs(): Response
     {
         return new Response('SAML ACS processed', 200);
     }
 
-    /**
-     * Single Logout Service.
-     */
+    #[Route('/saml/sls', name: 'saml_sls')]
     public function sls(): Response
     {
         $this->samlAuth->processSLO();
