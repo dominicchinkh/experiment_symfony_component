@@ -24,6 +24,20 @@ services:
         networks:
             - znet
 
+    # https://hub.docker.com/r/kenchan0130/simplesamlphp/
+    idp:
+        container_name: idp
+        hostname: idp
+        image: kenchan0130/simplesamlphp
+        ports:
+            - "8080:8080"
+        environment:
+            SIMPLESAMLPHP_SP_ENTITY_ID: "http://localhost/saml/metadata"
+            SIMPLESAMLPHP_SP_ASSERTION_CONSUMER_SERVICE: "http://localhost/saml/acs"
+            SIMPLESAMLPHP_SP_SINGLE_LOGOUT_SERVICE: "http://localhost/saml/sls"
+        networks:
+            - znet
+
 # https://blog.alejandrocelaya.com/2017/04/21/set-specific-ip-addresses-to-docker-containers-created-with-docker-compose/
 networks:
     znet:

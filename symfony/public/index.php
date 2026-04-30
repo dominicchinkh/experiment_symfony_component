@@ -3,13 +3,16 @@
 require_once dirname(__DIR__).'/vendor/autoload_runtime.php';
 
 use Dominic\ExperimentSymfonyComponent\Controller\HomeController;
+use Dominic\ExperimentSymfonyComponent\Controller\SamlController;
 use Dominic\ExperimentSymfonyComponent\Security\ApiKeyAuthenticator;
 use Dominic\ExperimentSymfonyComponent\Security\InMemoryUserProvider;
+use Dominic\ExperimentSymfonyComponent\Security\SamlAuthenticator;
 use Dominic\ExperimentSymfonyComponent\Security\TokenStorageValueResolver;
 use Dominic\ExperimentSymfonyComponent\Security\User;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpKernel\Controller\ArgumentResolver;
 use Symfony\Component\HttpKernel\Controller\ArgumentResolver\DefaultValueResolver;
 use Symfony\Component\HttpKernel\Controller\ArgumentResolver\RequestAttributeValueResolver;
@@ -28,9 +31,14 @@ use Symfony\Component\Security\Http\Event\CheckPassportEvent;
 use Symfony\Component\Security\Http\EventListener\UserProviderListener;
 use Symfony\Component\Security\Http\Firewall;
 use Symfony\Component\Security\Http\Firewall\AuthenticatorManagerListener;
+use Symfony\Component\Security\Http\Firewall\ContextListener;
 use Symfony\Component\Security\Http\FirewallMapInterface;
 
 return function () {
+
+    // --- SAML Settings ---
+    $samlSettings = require dirname(__DIR__).'/config/saml_settings.php';
+    $samlController = new SamlController($samlSettings);
 
     // --- Routing ---
     $routes = new RouteCollection();
@@ -59,6 +67,44 @@ return function () {
         )
     );
 
+    // SAML routes (use closures to inject samlController)
+    $routes->add(
+        'saml_metadata', 
+        new Route(
+            '/saml/metadata', 
+            [ '_controller' => fn () => $samlController->metadata() ]
+        )
+    );
+
+    $routes->add(
+        'saml_login', 
+        new Route(
+            '/saml/login', 
+            [ '_controller' => fn () => $samlController->login() ]
+        )
+    );
+
+    $routes->add(
+        'saml_acs', 
+        new Route(
+            '/saml/acs', 
+            [ '_controller' => fn () => $samlController->acs() ],
+            [],
+            [],
+            '',
+            [],
+            ['POST']
+        )
+    );
+
+    $routes->add(
+        'saml_sls', 
+        new Route(
+            '/saml/sls', 
+            [ '_controller' => fn () => $samlController->sls() ]
+        )
+    );
+
     $context = new RequestContext();
     $matcher = new UrlMatcher($routes, $context);
 
@@ -76,6 +122,9 @@ return function () {
         'secret-user-key' => 'user',
     ]);
 
+    // SAML authenticator
+    $samlAuthenticator = new SamlAuthenticator($samlSettings);
+
     // Event Dispatcher
     $dispatcher   = new EventDispatcher();
     $requestStack = new RequestStack();
@@ -86,7 +135,7 @@ return function () {
 
     // AuthenticatorManager handles the authentication flow
     $authenticatorManager = new AuthenticatorManager(
-        [$authenticator],
+        [$authenticator, $samlAuthenticator],
         $tokenStorage,
         $dispatcher,
         'main',
@@ -95,13 +144,19 @@ return function () {
     // AuthenticatorManagerListener is the firewall listener
     $authenticatorManagerListener = new AuthenticatorManagerListener($authenticatorManager);
 
+    // ContextListener: persists/restores the security token in the session
+    $contextListener = new ContextListener($tokenStorage, [$userProvider], 'main', null, $dispatcher);
+
     // FirewallMap: returns listeners for a given request
-    $firewallMap = new class($authenticatorManagerListener) implements FirewallMapInterface {
-        public function __construct(private AuthenticatorManagerListener $listener) {}
+    $firewallMap = new class($contextListener, $authenticatorManagerListener) implements FirewallMapInterface {
+        public function __construct(
+            private ContextListener $contextListener,
+            private AuthenticatorManagerListener $authListener,
+        ) {}
 
         public function getListeners(Request $request): array
         {
-            return [[$this->listener], null, null];
+            return [[$this->contextListener, $this->authListener], null, null];
         }
     };
 
@@ -115,7 +170,7 @@ return function () {
 
     // --- HttpKernel ---
     $controllerResolver = new ControllerResolver();
-    
+
     $argumentResolver = new ArgumentResolver(null, [
         new TokenStorageValueResolver($tokenStorage),
         new RequestAttributeValueResolver(),
@@ -127,6 +182,7 @@ return function () {
     $kernel = new HttpKernel($dispatcher, $controllerResolver, $requestStack, $argumentResolver);
 
     $request = Request::createFromGlobals();
+    $request->setSession(new Session());
     $response = $kernel->handle($request);
     $response->send();
     $kernel->terminate($request, $response);

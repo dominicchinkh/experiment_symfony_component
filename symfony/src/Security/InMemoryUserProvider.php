@@ -2,7 +2,6 @@
 
 namespace Dominic\ExperimentSymfonyComponent\Security;
 
-use Symfony\Component\Security\Core\Exception\UserNotFoundException;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Core\User\UserProviderInterface;
 
@@ -19,7 +18,8 @@ class InMemoryUserProvider implements UserProviderInterface
     public function loadUserByIdentifier(string $identifier): UserInterface
     {
         if (!isset($this->users[$identifier])) {
-            throw new UserNotFoundException(sprintf('User "%s" not found.', $identifier));
+            // Auto-provision unknown users (e.g. from SAML) with ROLE_USER
+            $this->users[$identifier] = new User($identifier, ['ROLE_USER']);
         }
 
         return $this->users[$identifier];

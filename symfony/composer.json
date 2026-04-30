@@ -18,7 +18,8 @@
         "symfony/routing": "^8.0",
         "symfony/http-kernel": "^8.0",
         "symfony/security-http": "^8.0",
-        "symfony/security-core": "^8.0"
+        "symfony/security-core": "^8.0",
+        "onelogin/php-saml": "^4.3"
     },
     "config": {
         "allow-plugins": {
