@@ -20,7 +20,8 @@
         "symfony/security-http": "^8.0",
         "symfony/security-core": "^8.0",
         "onelogin/php-saml": "^4.3",
-        "symfony/config": "^8.0"
+        "symfony/config": "^8.0",
+        "symfony/yaml": "^8.0"
     },
     "config": {
         "allow-plugins": {

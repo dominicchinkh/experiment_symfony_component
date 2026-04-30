@@ -1,0 +1,19 @@
+security:
+    providers:
+        in_memory:
+            users:
+                admin:
+                    roles: [ROLE_ADMIN]
+                user:
+                    roles: [ROLE_USER]
+
+    authenticators:
+        api_key:
+            keys:
+                secret-admin-key: admin
+                secret-user-key: user
+        saml: ~
+
+    firewall:
+        name: main
+        context: main
