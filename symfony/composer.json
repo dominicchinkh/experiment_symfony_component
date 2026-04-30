@@ -12,5 +12,13 @@
             "email": "dominicchinkh@gmail.com"
         }
     ],
-    "require": {}
+    "require": {
+        "symfony/http-foundation": "^8.0",
+        "symfony/runtime": "^8.0"
+    },
+    "config": {
+        "allow-plugins": {
+            "symfony/runtime": true
+        }
+    }
 }
