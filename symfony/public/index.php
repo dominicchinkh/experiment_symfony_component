@@ -2,8 +2,11 @@
 
 require_once dirname(__DIR__).'/vendor/autoload_runtime.php';
 
+use Dominic\ExperimentSymfonyComponent\Controller\HomeController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Controller\ArgumentResolver;
+use Symfony\Component\HttpKernel\Controller\ControllerResolver;
 use Symfony\Component\Routing\Matcher\UrlMatcher;
 use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Routing\Route;
@@ -20,11 +23,7 @@ return function () {
         'home', 
         new Route(
             '/', 
-            [
-                '_controller' => function () {
-                    return new Response('Welcome home!');
-                }
-            ]
+            [ '_controller' => HomeController::class.'::index' ]
         )
     );
 
@@ -32,11 +31,7 @@ return function () {
         'hello', 
         new Route(
             '/hello/{name}', 
-            [
-                '_controller' => function (string $name) {
-                    return new Response("Hello, $name!");
-                }
-            ]
+            [ '_controller' => HomeController::class.'::hello' ]
         )
     );
 
@@ -47,10 +42,16 @@ return function () {
 
     try {
         $parameters = $matcher->match($request->getPathInfo());
-        $controller = $parameters['_controller'];
-        unset($parameters['_controller'], $parameters['_route']);
-        $response = $controller(...array_values($parameters));
-        
+        $request->attributes->add($parameters);
+
+        $controllerResolver = new ControllerResolver();
+        $argumentResolver   = new ArgumentResolver();
+
+        $controller = $controllerResolver->getController($request);
+        $arguments  = $argumentResolver->getArguments($request, $controller);
+
+        $response = call_user_func_array($controller, $arguments);
+
     } catch (ResourceNotFoundException $e) {
         $response = new Response('Not Found', 404);
     }
