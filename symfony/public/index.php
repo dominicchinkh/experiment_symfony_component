@@ -3,7 +3,6 @@
 require_once dirname(__DIR__).'/vendor/autoload_runtime.php';
 
 use Dominic\ExperimentSymfonyComponent\Controller\ControllerResolver;
-use Dominic\ExperimentSymfonyComponent\Controller\HomeController;
 use Dominic\ExperimentSymfonyComponent\Controller\SamlController;
 use Dominic\ExperimentSymfonyComponent\Routing\AttributeRouteLoader;
 use Dominic\ExperimentSymfonyComponent\Security\AuthenticatorManagerFactory;
@@ -28,14 +27,21 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorage;
 
 return function () {
 
-    // --- SAML Settings ---
-    $samlSettings = require dirname(__DIR__).'/config/saml_settings.php';
-
     // --- Routing (loaded from #[Route] attributes) ---
     $routeLoader = new AttributeRouteLoader();
     $routes = new RouteCollection();
-    $routes->addCollection($routeLoader->load(HomeController::class));
-    $routes->addCollection($routeLoader->load(SamlController::class));
+
+    $controllerDir = dirname(__DIR__).'/src/Controller';
+    foreach (glob($controllerDir.'/*.php') as $file) {
+        $className = 'Dominic\\ExperimentSymfonyComponent\\Controller\\'.basename($file, '.php');
+        if ($className === ControllerResolver::class) {
+            continue;
+        }
+        $collection = $routeLoader->load($className);
+        if ($collection) {
+            $routes->addCollection($collection);
+        }
+    }
 
     $context = new RequestContext();
     $matcher = new UrlMatcher($routes, $context);
@@ -69,6 +75,9 @@ return function () {
     // IsAuthenticated attribute listener — redirects to login if not authenticated
     $dispatcher->addSubscriber(new IsAuthenticatedListener($tokenStorage));
 
+    // --- SAML Settings ---
+    $samlSettings = require dirname(__DIR__).'/config/saml_settings.php';
+    
     // --- HttpKernel ---
     $controllerResolver = new ControllerResolver();
     $controllerResolver->registerController(SamlController::class, new SamlController($samlSettings));
