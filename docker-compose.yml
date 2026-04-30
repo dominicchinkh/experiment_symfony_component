@@ -1,0 +1,32 @@
+services:
+    apache:
+        container_name: apache
+        hostname: apache
+        image: httpd:2.4
+        ports:
+            - "80:80"
+        volumes:
+            - ./docker/apache/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro
+            - ./symfony:/var/www/symfony
+        depends_on:
+            - symfony
+        networks:
+            - znet
+
+    symfony:
+        container_name: symfony
+        hostname: symfony
+        build:
+            context: .
+            dockerfile: ./docker/symfony/Dockerfile
+        volumes:
+            - ./symfony:/var/www/symfony
+        networks:
+            - znet
+
+# https://blog.alejandrocelaya.com/2017/04/21/set-specific-ip-addresses-to-docker-containers-created-with-docker-compose/
+networks:
+    znet:
+        ipam:
+            config:
+                - subnet: 192.168.39.0/24

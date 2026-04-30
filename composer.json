@@ -1,0 +1,16 @@
+{
+    "name": "dominic/experiment_symfony_component",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "Dominic\\ExperimentSymfonyComponent\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Dominic Chin",
+            "email": "dominicchinkh@gmail.com"
+        }
+    ],
+    "require": {}
+}
