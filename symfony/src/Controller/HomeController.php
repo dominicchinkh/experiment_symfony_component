@@ -20,16 +20,4 @@ class HomeController
     {
         return new Response("Hello, $name!");
     }
-
-    #[Route('/dashboard', name: 'dashboard')]
-    public function dashboard(TokenStorageInterface $tokenStorage): Response
-    {
-        $user = $tokenStorage->getToken()->getUser();
-
-        return new JsonResponse([
-            'message' => 'Welcome to the dashboard!',
-            'user' => $user->getUserIdentifier(),
-            'roles' => $user->getRoles(),
-        ]);
-    }
 }

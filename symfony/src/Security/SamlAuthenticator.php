@@ -59,7 +59,7 @@ class SamlAuthenticator extends AbstractAuthenticator
     public function onAuthenticationSuccess(Request $request, TokenInterface $token, string $firewallName): ?Response
     {
         // Redirect to dashboard after successful SAML login
-        return new RedirectResponse('/dashboard');
+        return new RedirectResponse('/admin/dashboard');
     }
 
     public function onAuthenticationFailure(Request $request, AuthenticationException $exception): ?Response
