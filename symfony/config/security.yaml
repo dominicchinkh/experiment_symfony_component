@@ -17,3 +17,6 @@ security:
     firewall:
         name: main
         context: main
+
+    access_control:
+        - { path: ^/dashboard, roles: IS_AUTHENTICATED }

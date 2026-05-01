@@ -6,7 +6,7 @@ use Dominic\ExperimentSymfonyComponent\Controller\ControllerResolver;
 use Dominic\ExperimentSymfonyComponent\Controller\SamlController;
 use Dominic\ExperimentSymfonyComponent\Routing\AttributeRouteLoader;
 use Dominic\ExperimentSymfonyComponent\Security\AuthenticatorManagerFactory;
-use Dominic\ExperimentSymfonyComponent\Security\EventListener\IsAuthenticatedListener;
+use Dominic\ExperimentSymfonyComponent\Security\EventListener\AccessControlListener;
 use Dominic\ExperimentSymfonyComponent\Security\FirewallFactory;
 use Dominic\ExperimentSymfonyComponent\Security\TokenStorageValueResolver;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -46,11 +46,14 @@ return function () {
     $context = new RequestContext();
     $matcher = new UrlMatcher($routes, $context);
 
+    // --- SAML Settings ---
+    $samlSettings = require dirname(__DIR__).'/config/saml_settings.php';
+
     // --- Security (configured via config/security.yaml) ---
     $tokenStorage = new TokenStorage();
     $dispatcher   = new EventDispatcher();
     $requestStack = new RequestStack();
-
+    
     $security = AuthenticatorManagerFactory::create(
         dirname(__DIR__).'/config/security.yaml',
         $samlSettings,
@@ -72,12 +75,9 @@ return function () {
     $routerListener = new RouterListener($matcher, $requestStack, $context);
     $dispatcher->addSubscriber($routerListener);
 
-    // IsAuthenticated attribute listener — redirects to login if not authenticated
-    $dispatcher->addSubscriber(new IsAuthenticatedListener($tokenStorage));
+    // Access control — path-based rules from config/security.yaml
+    $dispatcher->addSubscriber(new AccessControlListener($tokenStorage, dirname(__DIR__).'/config/security.yaml'));
 
-    // --- SAML Settings ---
-    $samlSettings = require dirname(__DIR__).'/config/saml_settings.php';
-    
     // --- HttpKernel ---
     $controllerResolver = new ControllerResolver();
     $controllerResolver->registerController(SamlController::class, new SamlController($samlSettings));
