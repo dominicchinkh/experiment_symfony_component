@@ -19,4 +19,4 @@ security:
         context: main
 
     access_control:
-        - { path: ^/admin, roles: IS_AUTHENTICATED }
+        - { path: ^/admin, roles: ROLE_USER }

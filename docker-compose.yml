@@ -35,6 +35,7 @@ services:
             SIMPLESAMLPHP_SP_ENTITY_ID: "http://localhost/saml/metadata"
             SIMPLESAMLPHP_SP_ASSERTION_CONSUMER_SERVICE: "http://localhost/saml/acs"
             SIMPLESAMLPHP_SP_SINGLE_LOGOUT_SERVICE: "http://localhost/saml/sls"
+            SIMPLESAMLPHP_IDP_ADMIN_PASSWORD: "password"
         networks:
             - znet
 
